@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Acesso à Porta - Processo de Duas Etapas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f7f7f7;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+        .info {
+            background-color: #d9edf7;
+            color: #31708f;
+            border: 1px solid #bce8f1;
+        }
+        .log {
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+        #response {
+            margin-top: 20px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .explanation {
+            background-color: #fffaf0;
+            border-left: 4px solid #ffa500;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Controle de Acesso à Porta</h1>
+        
+        <button id="openDoorBtn" class="button">Abrir Porta</button>
+        
+        <div id="status" style="display: none;"></div>
+        
+        <h3>Resposta do Servidor</h3>
+        <div id="response">Aguardando resposta...</div>
+        
+        <h3>Log de Requisições</h3>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const openDoorBtn = document.getElementById('openDoorBtn');
+            const statusDiv = document.getElementById('status');
+            const logDiv = document.getElementById('log');
+            const responseDiv = document.getElementById('response');
+            
+            function addLog(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+            
+            function showStatus(message, type) {
+                statusDiv.className = type;
+                statusDiv.innerHTML = message;
+                statusDiv.style.display = 'block';
+            }
+            
+            openDoorBtn.addEventListener('click', function() {
+                openDoorBtn.disabled = true;
+                showStatus('Iniciando processo de duas etapas...', 'info');
+                addLog('Iniciando o processo em duas etapas para abrir a porta');
+                responseDiv.innerHTML = 'Processando...';
+                
+                // Enviar requisição para o proxy de duas etapas
+                fetch('proxy.php', {
+                    method: 'POST'
+                })
+                .then(response => {
+                    addLog(`Resposta recebida: Status ${response.status}`);
+                    return response.text();  // Usar text() em vez de json() para capturar tudo
+                })
+                .then(rawResponse => {
+                    responseDiv.textContent = rawResponse;
+                    addLog(`Resposta completa recebida`);
+                    
+                    try {
+                        // Tentar interpretar como JSON
+                        const data = JSON.parse(rawResponse);
+                        if (data.success === true || data.ret === 'ok') {
+                            showStatus('✅ Porta aberta com sucesso!', 'success');
+                            addLog('Porta aberta com sucesso!');
+                        } else {
+                            showStatus(`❌ Erro: ${data.msg || 'Falha na operação'}`, 'error');
+                            addLog(`Erro: ${data.msg || 'Falha na operação'}`);
+                        }
+                    } catch (e) {
+                        // Se não for JSON, apenas exibir que realizamos a requisição
+                        showStatus(`⚠️ Resposta recebida, mas não é JSON. Veja os detalhes abaixo.`, 'info');
+                        addLog(`Erro ao processar JSON: ${e.message}`);
+                    }
+                })
+                .catch(error => {
+                    addLog(`Erro: ${error.message}`);
+                    showStatus(`❌ Erro na comunicação: ${error.message}`, 'error');
+                    responseDiv.textContent = `Erro: ${error.message}`;
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        openDoorBtn.disabled = false;
+                    }, 2000);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
